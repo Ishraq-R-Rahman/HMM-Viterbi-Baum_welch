@@ -4,12 +4,19 @@ from scipy.linalg import eig
 from scipy.stats import norm
 from sklearn.preprocessing import normalize
 
-def Viterbi( emission_data , states , initial_prob , transition_matrix , emission_probabilties ):
+def Normalize_Probability( arr ):
+    normal = np.linalg.norm(arr)
+    normal_array = arr / normal
+    return normal_array
+
+
+def Viterbi( emission_data , states , initial_prob , transition_matrix , emission_probabilities ):
+    
     V = [[0 for x in range(len(states))] for y in range(len(emission_data))]
     path = [[0 for x in range(len(emission_data))] for y in range(len(states))]
 
     for s in states:
-        V[0][s] = initial_prob[s] * emission_probabilties[s][0]
+        V[0][s] = initial_prob[s] * emission_probabilities[s][0]
         path[s][0] = s
     
     
@@ -21,8 +28,9 @@ def Viterbi( emission_data , states , initial_prob , transition_matrix , emissio
             max_probability = -1
             
             for y0 in states:
-                nprob = V[t-1][y0] * transition_matrix[y0][y] * emission_probabilties[y][t]
-                
+
+                nprob = V[t-1][y0] * transition_matrix[y0][y] * emission_probabilities[y][t]
+
                 if nprob > max_probability:
                     max_probability = nprob
                     state = y0
@@ -31,6 +39,8 @@ def Viterbi( emission_data , states , initial_prob , transition_matrix , emissio
                     new_path[y][0:t+1] = path[state][0:t+1]
 
                     new_path[y][t] = y
+
+        V[t] /= np.sum(V[t]) # normalizing to avoid the probabilities from getting too low
 
         path = new_path
     
@@ -41,15 +51,13 @@ def Viterbi( emission_data , states , initial_prob , transition_matrix , emissio
         if V[len(emission_data)-1][y] > probability:
             probability = V[len(emission_data)-1][y]
             state = y
-    
-    print(path[state])
     return path[state]
 
 
 def Emission_Probability( emission_data , means , variances ):
     final = []
 
-    for i in range( len(variances ) ):
+    for i in range( len(variances) ):
         emission_probability = norm.pdf(emission_data , means[i] , math.sqrt(variances[i]))
         # normal = np.linalg.norm(emission_probability)
         # normal_array = emission_probability / normal
@@ -94,6 +102,10 @@ def Read_Data( file ):
             emission_data.append(float(line))
     return emission_data
 
+def Write_Data( states ):
+    with open('./Output/viterbi_without_learning.txt' , 'w') as f:
+        for i in range(len(states)):
+            f.write(str( '"La Nina"' if states[i] == 1 else '"El Nino"' ) + '\n')
 
 if __name__=='__main__':
     states , transition_matrix , gaussian_means , variance = Read_Parameters('./Input/parameters.txt')
@@ -103,14 +115,9 @@ if __name__=='__main__':
 
     emission_probabilities = Emission_Probability( emission_data , gaussian_means , variance )
 
-    # emission_data = [0,1,2]
-    # states = [0,1]
-    # initial_prob = [0.6,0.4]
-    # transition_matrix = [[0.7,0.3],[0.4,0.6]]
-    # emission_probabilities = [[0.1,0.4,0.5],[0.6,0.3,0.1]]
 
-
-    Viterbi( emission_data , states , initial_prob , transition_matrix , emission_probabilities  )
+    sequence = Viterbi( emission_data , states , initial_prob , transition_matrix , emission_probabilities  )
+    Write_Data(sequence)
 
     
 
