@@ -2,13 +2,6 @@ import numpy as np
 import math
 from scipy.linalg import eig
 from scipy.stats import norm
-from sklearn.preprocessing import normalize
-
-def Normalize_Probability( arr ):
-    normal = np.linalg.norm(arr)
-    normal_array = arr / normal
-    return normal_array
-
 
 def Viterbi( emission_data , states , initial_prob , transition_matrix , emission_probabilities ):
     
@@ -40,7 +33,7 @@ def Viterbi( emission_data , states , initial_prob , transition_matrix , emissio
 
                     new_path[y][t] = y
 
-        V[t] /= np.sum(V[t]) # normalizing to avoid the probabilities from getting too low
+        V[t] /= np.sum(V[t]) # normalizing to prevent the probabilities from getting too low
 
         path = new_path
     
@@ -59,8 +52,6 @@ def Emission_Probability( emission_data , means , variances ):
 
     for i in range( len(variances) ):
         emission_probability = norm.pdf(emission_data , means[i] , math.sqrt(variances[i]))
-        # normal = np.linalg.norm(emission_probability)
-        # normal_array = emission_probability / normal
         final.append( emission_probability )
     
     return final
@@ -116,14 +107,6 @@ if __name__=='__main__':
     emission_probabilities = Emission_Probability( emission_data , gaussian_means , variance )
 
 
+    # Viterbi without learning
     sequence = Viterbi( emission_data , states , initial_prob , transition_matrix , emission_probabilities  )
     Write_Data(sequence)
-
-    
-
-    
-    
-
-    
-
-    
