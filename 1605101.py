@@ -49,14 +49,95 @@ def Backward_Probability( emission_data , states , initial_probabilities , trans
 
 
 def Baum_Welch( emission_data , states , initial_probability , transition_matrix , emission_probabilities ):
+
+    observation_rows = len(emission_data)
+
     alpha_probabilities = Forward_Probability(emission_data , states , initial_probability , transition_matrix , emission_probabilities )
     beta_probabilities = Backward_Probability(emission_data , states , initial_probability , transition_matrix , emission_probabilities )
 
+
     pi_star = np.multiply( alpha_probabilities , beta_probabilities )
 
-    print(pi_star)
+    for t in range(observation_rows):
+        pi_star[t] /= np.sum(pi_star[t])
+
     
+    probability_of_observation = sum(initial_probability[:] * beta_probabilities[0][:])
+
+    pi_double_star = [[[0 for i in range(len(states))] for j in range( len(states) )] for k in range( observation_rows ) ]
+
+    for t in range( observation_rows - 1):
+        
+        denominator = sum( alpha_probabilities[t][:] * beta_probabilities[t][:])
+
+
+        for y in states:
+            for y0 in states:
+                
+                pi_double_star[t][y][y0] = alpha_probabilities[t][y] * transition_matrix[y][y0] * emission_probabilities[y0][t+1] * beta_probabilities[t+1][y0]
+    
+    gamma = [[ 0 for y in range(len(states))] for x in range(observation_rows)]
+
+    for t in range(observation_rows-1):
+        for s in states:
+            gamma[t][s] = np.sum(pi_double_star[t][s][:])
+
+    new_initial_probability = gamma[0] / np.sum(gamma[0])
+
+    new_transition_matrix = [[0 for x in range(len(states))] for y in range(len(states)) ]
+
+    for y in states:
+        for y0 in states:
+            new_transition_matrix[y][y0] = np.sum( pi_double_star[:][y][y0] ) / np.sum( gamma[:][y] ) / probability_of_observation
+    
+
+    means = [ 0 for x in range(len(states) ) ]
+    variances = [0 for x in range(len(states) ) ]
+
+    sums_pi_star = sum(pi_star[:])
+
+    for t in range(observation_rows):
+        
+        for s in states:
+            means[s] += pi_star[t][s] * emission_data[t]
+    
+    means[:] /= sums_pi_star[:]
+    print(means)
+
     return 0
+
+def Another_Baum_Welch( emission_data , states , initial_probability , transition_matrix , emission_probabilities ):
+    observation_rows = len(emission_data)
+
+    alpha_probabilities = Forward_Probability(emission_data , states , initial_probability , transition_matrix , emission_probabilities )
+    beta_probabilities = Backward_Probability(emission_data , states , initial_probability , transition_matrix , emission_probabilities )
+
+
+    pi_star = np.multiply( alpha_probabilities , beta_probabilities )
+
+    for t in range(observation_rows):
+        pi_star[t] /= np.sum(pi_star[t])
+    
+        
+
+    means = [ 0 for x in range(len(states) ) ]
+    variances = [0 for x in range(len(states) ) ]
+
+    sums_pi_star = sum(pi_star[:])
+
+    for t in range(observation_rows):
+        means[:] += pi_star[t][:] * emission_data[t]
+
+    
+    means[:] /= sums_pi_star[:]
+
+    for t in range(observation_rows):
+        for s in states:
+            variances[s] += pi_star[t][s] * (( emission_data[t] - means[s] ) ** 2)
+
+    variances[:] /= sums_pi_star[:]
+    variances = np.sqrt(variances)
+
 
 def Viterbi( emission_data , states , initial_prob , transition_matrix , emission_probabilities ):
     
@@ -166,4 +247,4 @@ if __name__=='__main__':
     # sequence = Viterbi( emission_data , states , initial_prob , transition_matrix , emission_probabilities  )
     # Write_Data(sequence , './Output/viterbi_without_learning.txt' )
 
-    Baum_Welch(emission_data , states , initial_prob , transition_matrix , emission_probabilities )
+    Another_Baum_Welch(emission_data , states , initial_prob , transition_matrix , emission_probabilities )
