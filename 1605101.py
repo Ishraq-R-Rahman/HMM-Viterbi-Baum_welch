@@ -3,6 +3,61 @@ import math
 from scipy.linalg import eig
 from scipy.stats import norm
 
+def Forward_Probability( emission_data , states , initial_probabilities , transition_matrix , emission_probabilities  ):
+
+    observation_rows = len(emission_data)
+
+    alpha_probabilities = [[0 for x in range( len(states) )] for y in range( observation_rows ) ]
+
+    alpha_probabilities[0] = [ initial_probabilities[i] * emission_probabilities[i][0] for i in states]
+
+    for t in range( 1 , observation_rows):
+        for y in states:
+            probability = 0
+
+            for y0 in states:
+                probability += alpha_probabilities[t-1][y0] * transition_matrix[y0][y]
+            
+            alpha_probabilities[t][y] = probability * emission_probabilities[y][t]
+
+        # Normalize current probabilities, so that values won't be too low over time
+        alpha_probabilities[t] /= np.sum(alpha_probabilities[t])
+    
+    return alpha_probabilities
+
+def Backward_Probability( emission_data , states , initial_probabilities , transition_matrix , emission_probabilities ):
+
+    observation_rows = len(emission_data)
+    beta_probabilities = [[0 for x in range( len(states) )] for y in range( observation_rows ) ]
+
+    beta_probabilities[observation_rows-1] = [1.0 for i in states]
+
+    for t in reversed(list(range(observation_rows))[1:]):
+        
+        for y in states:
+            probability = 0.0
+
+            for y0 in states:
+                
+                probability += beta_probabilities[t][y0] * transition_matrix[y][y0] * emission_probabilities[y0][t]
+            
+            beta_probabilities[t-1][y] = probability
+        
+        beta_probabilities[t-1] /= np.sum(beta_probabilities[t-1])
+    
+    return beta_probabilities
+
+
+def Baum_Welch( emission_data , states , initial_probability , transition_matrix , emission_probabilities ):
+    alpha_probabilities = Forward_Probability(emission_data , states , initial_probability , transition_matrix , emission_probabilities )
+    beta_probabilities = Backward_Probability(emission_data , states , initial_probability , transition_matrix , emission_probabilities )
+
+    pi_star = np.multiply( alpha_probabilities , beta_probabilities )
+
+    print(pi_star)
+    
+    return 0
+
 def Viterbi( emission_data , states , initial_prob , transition_matrix , emission_probabilities ):
     
     V = [[0 for x in range(len(states))] for y in range(len(emission_data))]
@@ -93,8 +148,8 @@ def Read_Data( file ):
             emission_data.append(float(line))
     return emission_data
 
-def Write_Data( states ):
-    with open('./Output/viterbi_without_learning.txt' , 'w') as f:
+def Write_Data( states , file ):
+    with open( file , 'w') as f:
         for i in range(len(states)):
             f.write(str( '"La Nina"' if states[i] == 1 else '"El Nino"' ) + '\n')
 
@@ -108,5 +163,7 @@ if __name__=='__main__':
 
 
     # Viterbi without learning
-    sequence = Viterbi( emission_data , states , initial_prob , transition_matrix , emission_probabilities  )
-    Write_Data(sequence)
+    # sequence = Viterbi( emission_data , states , initial_prob , transition_matrix , emission_probabilities  )
+    # Write_Data(sequence , './Output/viterbi_without_learning.txt' )
+
+    Baum_Welch(emission_data , states , initial_prob , transition_matrix , emission_probabilities )
