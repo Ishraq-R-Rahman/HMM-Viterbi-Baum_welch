@@ -2,6 +2,24 @@ import numpy as np
 import math
 from scipy.linalg import eig
 from scipy.stats import norm
+from hmmlearn.hmm import GaussianHMM
+
+def fitHMM( emission_data , states ):
+    model = GaussianHMM( n_components= len(states) , n_iter=50).fit( np.reshape( emission_data , [len(emission_data),1] ) )
+
+    hidden_states = model.predict( np.reshape( emission_data , [ len(emission_data) , 1 ] ) )
+
+    mus = np.array( model.means_ )
+    sigmas = np.array(np.sqrt(np.array([np.diag(model.covars_[0]),np.diag(model.covars_[1])])))
+    P = np.array(model.transmat_)
+ 
+    # re-organize mus, sigmas and P so that first row is lower mean (if not already)
+    if mus[0] < mus[1]:
+        mus = np.flipud(mus)
+        sigmas = np.flipud(sigmas)
+        P = np.fliplr(np.flipud(P))
+ 
+    return hidden_states, mus, sigmas, P
 
 def Forward_Probability( emission_data , states , initial_probabilities , transition_matrix , emission_probabilities  ):
 
@@ -226,7 +244,7 @@ def Write_Parameter( states , transition_matrix , means , variances, st_db , fil
         f.write('\n')
 
         for i in range(len(states) ):
-            f.write(str(st_db[i]) + ' ')
+            f.write('%.2f ' % st_db[i] )
 
 
 
@@ -254,3 +272,13 @@ if __name__=='__main__':
     Write_Data(sequence , './Output/viterbi_without_learning.txt' )
     Write_Parameter( states , transition_matrix , means , variances, initial_prob , './Output/parameters_learned.txt' )
     Write_Data(seq_after_learning , './Output/viterbi_after_learning.txt' )
+
+    
+    hidden_states, mus, sigmas, P = fitHMM( emission_data , states )
+    mus = mus.flatten()
+
+    sigmas = np.square(sigmas).flatten()
+
+    initial_prob = Stationary_Distribution(P)
+    
+    Write_Parameter( states , P , mus , sigmas  , initial_prob , './Output/library_parameters_learned.txt' )
